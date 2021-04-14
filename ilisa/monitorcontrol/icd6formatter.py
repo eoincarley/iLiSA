@@ -270,7 +270,7 @@ def readUDPstokes(files, metadata):
     freqs = metadata['frequencies'] # 
     integ = metadata['integration'] # Input raw time res. Usuall 16x5.12 microseconds.
     time0 = metadata['datetime']
-    tres = 0.1  		    # Desired tres after integration
+    tres = 0.001  		    # Desired tres after integration
     ntimes = int(tres/integ)        # In while loop below, read ever ntimes -> integrate 
     nsteps = duration/tres
     const1 = int(ntimes*244*4)      # Numbytes to read in each block. Each element is a 4 byte float32.

@@ -1305,7 +1305,7 @@ def plotbst(bstff, pol_stokes=True):
     iquv = numpy.array(udpdata[0])
     obsudpinfo = udpdata[3]   
     icd6.udp2hdf5(iquv, obsudpinfo, stokes=['I','Q','U','V'], savepath=outfolder)
-    icd6.plotUPDfullstokes(*udpdata, savepath=outfolder)
+    #icd6.plotUPDfullstokes(*udpdata, savepath=outfolder)
 
     """Plot BST data."""
     BSTdata, obsfileinfo = readbstfolder(bstff)
