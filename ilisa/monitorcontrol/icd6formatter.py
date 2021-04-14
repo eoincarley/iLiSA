@@ -254,10 +254,10 @@ def plotUPDfullstokes(fullstokes, times, freqs, metadata, savepath='.'):
     plt.xticks(rotation=0)
     plt.subplots_adjust(wspace=0.2, hspace=0.4)
     #fig.autofmt_xdate()
-    pngname = 'l4sw_uk902c_'+metadata['datetime'].strftime("%Y%m%dT%H%M%S")+'_SUN_bfs_IQUV.png'
+    ldat_type = metadata['ldat_type']
+    pngname = 'l4sw_uk902c_'+metadata['datetime'].strftime("%Y%m%dT%H%M%S")+'_SUN_'+ldat_type+'_IQUV.png'
     plt.savefig(savepath+pngname)
-    plt.show()
-    pdb.set_trace()
+    #plt.show()
 
 
 def readUDPstokes(files, metadata):
@@ -332,8 +332,10 @@ def sb_to_freqs(sb0, sb1, mode, clock_freq=200.0):
 
 def udp2hdf5(data, obsfileinfo, stokes='I', savepath='.'):
 
-    ldat_type = obsfileinfo['ldat_type']    
-    filename = 'l4sw_uk902c_'+obsfileinfo['datetime'].strftime("%Y%m%dT%H%M%S")+'_SUN_'+ldat_type+'_'+''+.join(stokes)+'.h5'
+    ldat_type = obsfileinfo['ldat_type']   
+    stksstr = ''.join(stokes)
+    strtime0 = obsfileinfo['datetime'].strftime("%Y%m%dT%H%M%S") 
+    filename = 'l4sw_uk902c_'+strtime0+'_SUN_'+ldat_type+'_'+stksstr+'.h5'
     outfid = h5py.File(savepath+filename, "w")
     outfid.create_group("SYS_LOG")
     ds = outfid.create_group("DYNSPEC_000")

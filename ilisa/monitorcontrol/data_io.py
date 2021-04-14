@@ -1226,7 +1226,7 @@ import matplotlib.dates as mdates
 
 import ilisa.monitorcontrol.modeparms as modeparms
 
-def bst2fits(datai, dataq, obsfileinfoi, savepath='.'):
+def bst2fits(datai, dataq, obsfileinfo, savepath='.'):
 
     from astropy import units as u
     from astropy.io import fits as fits
@@ -1289,13 +1289,13 @@ def bst2fits(datai, dataq, obsfileinfoi, savepath='.'):
     hdu_stokesq.header['NAXIS2']    = ylen 	
 
     hdu = fits.HDUList([hdu0, hdu_stokesi, hdu_stokesq, hdu_ftaxes])
-    hdu.writeto('l4sw_uk902c_'+starttime.strftime("%Y%m%dT%H%M%S")+'_SUN_iq.fits', overwrite=True)
+    hdu.writeto(savepath+'l4sw_uk902c_'+starttime.strftime("%Y%m%dT%H%M%S")+'_SUN_bst_IQ.fits', overwrite=True)
     return hdu
 
 
 def plotbst(bstff, pol_stokes=True):
 
-    outfolder = '/Data/IE613/lofar4sw/udp2hdf5test/'
+    outfolder = '/home/ilofar/Data/IE613/lofar4sw/udp2hdf5test/'
 
     # Plot hi-res beam-formed data
     bfsff = '/home/ilofar/Data/UK902/bfs/UK902_20210408_094403_spw5_sb51:461_dur1020_dir0.,0.,SUN_bfs/'
@@ -1305,7 +1305,7 @@ def plotbst(bstff, pol_stokes=True):
     iquv = numpy.array(udpdata[0])
     obsudpinfo = udpdata[3]   
     icd6.udp2hdf5(iquv, obsudpinfo, stokes=['I','Q','U','V'], savepath=outfolder)
-    icd6.plotUPDfullstokes(*udpdatai, savepath=outfolder)
+    icd6.plotUPDfullstokes(*udpdata, savepath=outfolder)
 
     """Plot BST data."""
     BSTdata, obsfileinfo = readbstfolder(bstff)
@@ -1366,7 +1366,7 @@ def plotbst(bstff, pol_stokes=True):
                   + ' pointing: {},{},{}'.format(*pointing))
     plt.suptitle(supertitle)
     target = pointing[2]
-    pngname = '{}-{}-{}-BST-IQ.png'.format(stnid, ts[0].strftime("%Y%m%d_%H%M%S"), target)
+    pngname = 'l4sw_{}c_{}_{}_bst_IQ.png'.format(stnid, ts[0].strftime("%Y%m%d_%H%M%S"), target)
     plt.savefig(outfolder+pngname)
     #plt.show()
 
