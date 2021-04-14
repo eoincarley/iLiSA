@@ -80,3 +80,6 @@ iLiSA.code-workspace
 #project specific
 apps/**
 docs/**
+
+# Bash script for testing
+ilisa_cmd

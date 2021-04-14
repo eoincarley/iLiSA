@@ -6,12 +6,8 @@ import numpy
 import datetime
 import warnings
 
-ANTENNA_SETS = ['LBA_INNER', 'LBA_OUTER',
-                'LBA_SPARSE_EVEN', 'LBA_SPARSE_ODD',
-                'LBA_X', 'LBA_Y',
-                'HBA_DUAL', 'HBA_JOINED',
-                'HBA_ZERO', 'HBA_ONE']
-NQFREQ_NOM = 100.0e6  # Nominal Nyquist frequency in Hz
+RCU_SB_SEP = "+"
+Nqfreq = 100.0e6  # Nyquist frequency in Hz
 TotNrOfsb = 512  # Total number of subbands. (Subbands numbered 0:511)
 nrofrcus = 192  # Number of RCUs
 MIN_STATS_INTG = 1.0  # Minimum integration for statistics data in seconds.
@@ -492,6 +488,71 @@ def seqarg2list(seqarg):
     return arglist
 
 
+def seqlists2slicestr(seqlists):
+    """
+    Convert a sequence list to slice format
+
+    Instead of comma separated list format (e.g. 202,204,206), try to construct
+    subband slice syntax (e.g. 202:2:206), if possible. One use-case is in the
+    construction of file names containing subband selection, in order to avoid
+    file names that are potentially longer than 255 chars.
+
+    Parameters
+    ----------
+    seqlists : list or str
+        List of strings with comma separated numbers that are monotonically
+        increasing by a constant increment.
+
+    Returns
+    -------
+    slicestr : str
+        Slice expression string.
+
+    Examples
+    --------
+    Simple string with comma separated numbers:
+    >>> import ilisa.monitorcontrol.modeparms as mp
+    >>> mp.seqlists2slicestr('2,3,4,5,6')
+    '2:6'
+
+    Lists of strings with comma separated numbers:
+    >>> mp.seqlists2slicestr(['1,2,3','11,12,13'])
+    '1:3+11:13'
+
+    If number sequences increment by more than 1:
+    >>> mp.seqlists2slicestr(['1,3,5','12,15,18'])
+    '1:2:5+12:3:18'
+
+    """
+    def seqlist2slice(seqlist):
+        seqlistcanon = []
+        for seqel in seqlist.split(','):
+            seqel = [int(el) for el in seqel.split(':')]
+            seq = range(seqel[0], seqel[-1]+1)
+            seqlistcanon.extend(seq)
+        seqsteps = set(numpy.diff(seqlistcanon))
+        if len(seqsteps) > 1:
+            raise ValueError('Subband spec {} too complicated.'.format(seqlist))
+        elif len(seqsteps) == 0:
+            slicestr = "{}".format(seqlistcanon[0])
+        else:
+            seqstep = seqsteps.pop()
+            seqstepstr = str(seqstep) + ':' if seqstep > 1 else ''
+            slicestr = "{}:{}{}".format(seqlistcanon[0], seqstepstr,
+                                        seqlistcanon[-1])
+        return slicestr
+
+    if type(seqlists) is list:
+        slicestrlist = []
+        for seqlist in seqlists:
+            seqstr = seqlist2slice(seqlist)
+            slicestrlist.append(seqstr)
+        slicestr = RCU_SB_SEP.join(slicestrlist)
+    else:
+        slicestr = seqlist2slice(seqlists)
+    return slicestr
+
+
 def band2rcumode(band):
     """Map band to rcumode string (Inverse of rcumode2band())"""
     if band == "10_90":
@@ -529,35 +590,17 @@ def rcumode2sbfreqs(rcumode):
     """
     Get the frequencies (in Hz) of the subbands for the given rcumode
 
-    Parameters
-    ----------
-    rcumode: int
-        The RCUmode.
-
-    Returns
-    -------
-    freqs: array of floats
-        Frequencies in Hz. Array index corresponds to subband number.
+    Returns an array of frequencies where index is subband number.
     """
-    nqzone = (int(rcumode)-3)/2
+    NZ = (int(rcumode)-3)/2
     # Note the endpoint=False here. Before it 2018-03-22 it was missing.
-    freqs = numpy.linspace(nqzone * NQFREQ_NOM, (nqzone + 1) * NQFREQ_NOM,
-                           TotNrOfsb, endpoint=False)
+    freqs = numpy.linspace(NZ*Nqfreq, (NZ+1)*Nqfreq, TotNrOfsb, endpoint=False)
     return freqs
 
 
 def rcumode2band(rcumode):
     """
     Map rcumode to band string as used in beamctl arguments
-
-    Parameters
-    ----------
-    rcumode: int or str
-        The RCU mode.
-    Returns
-    -------
-    band: str
-        The band name.
     """
     rcumode = str(rcumode)
     if rcumode == "3":
@@ -575,23 +618,14 @@ def rcumode2band(rcumode):
     return band
 
 
-def rcumode2antset_eu(rcumode):
+def rcumode2antset(rcumode):
     """
-    Map rcumode to antenna set for EU stations.
+    Map rcumode to antennaset, which is used in beamctl arguments
 
-    Antenna set is only meaningful in Dutch stations.
-    But it is required in beamctl arguments.
-
-    Parameters
-    ----------
-    rcumode: int
-        The RCU mode.
-
-    Returns
-    -------
-    antset: str
-        Antenna set name.
+    Assumption is that one wants to use as many of antennas in field as
+    possible. (This function may soon be deprecated.)
     """
+    # NOTE new/more antennasets are now available.
     rcumode = int(rcumode)
     if rcumode == 3 or rcumode == 4:
         antset = 'LBA_INNER'
@@ -603,121 +637,31 @@ def rcumode2antset_eu(rcumode):
 
 
 def rcumode2nyquistzone(rcumode):
-    """\
-    Compute Nyquist zone for given RCU mode.
-
-    Parameters
-    ----------
-    rcumode: int or str
-        The RCU mode (a.k.a SPW).
-
-    Returns
-    -------
-    nqzone: int
-        Nyquist zone number.
-    """
-    nqzone = int((int(rcumode)-3)/2)
-    return nqzone
+    nz = int((int(rcumode)-3)/2)
+    return nz
 
 
 def freq2sb(freq):
-    """\
-    Convert frequency in Hz to subband number and Nyquist zone
-
-    Parameters
-    ----------
-    freq: float
-        Frequency in Hz
-
-    Returns
-    -------
-    sb: int
-        Subband number
-    nqzone: int
-        Nyquist zone number
     """
-    abs_sb = int(round(freq / NQFREQ_NOM * TotNrOfsb))
-    sb = abs_sb % TotNrOfsb
-    nqzone = abs_sb / TotNrOfsb
-    return sb, nqzone
+    Convert frequency in Hz to subband number and Nyquist zone
+    """
+    absSB = int(round(freq/Nqfreq*TotNrOfsb))
+    sb = absSB % TotNrOfsb
+    NqZone = absSB / TotNrOfsb
+    return sb, NqZone
 
 
-def sb2freq(sb, nqzone):
+def sb2freq(sb, NqZone):
     """
     Convert subband in a given Nyquist zone to a frequency
-
-    Parameters
-    ----------
-    sb: int or str
-        Subband number
-    nqzone: int or str
-        Nyquist zone number
-
-    Returns
-    -------
-    freq: float
-        Frequency in Hz
     """
-    freq = NQFREQ_NOM * (int(sb) / float(TotNrOfsb) + int(nqzone))
+    freq = Nqfreq*(int(sb)/float(TotNrOfsb)+int(NqZone))
     return freq
-
-
-def nqz2rcumode(nqzone, nqfreq=100e6, filt_on=False):
-    """\
-    Convert Nyquist zone number and Nyquist frequency to RCU mode.
-
-    Parameters
-    ----------
-    nqzone: int
-        Nyquist zone number.
-    nqfreq: float, optional
-        Nyquist frequency in Hz. Default 100 MHz.
-    filt_on: bool, optional.
-        Is narrower band-pass filter on? Default False.
-
-    Returns
-    -------
-    rcumode: int
-        RCU mode.
-
-    Raises
-    ------
-    ValueError
-        If nqzone is out of range for nqfreq.
-    """
-    if nqfreq == 100e6:
-        if nqzone == 0:
-            if not filt_on:
-                rcumode = 3
-            else:
-                rcumode = 4
-        elif nqzone == 1:
-            rcumode = 5
-        elif nqzone == 2:
-            rcumode = 7
-        else:
-            raise ValueError('nqzone out of range for 100MHz NQ')
-    else:
-        if nqzone == 1:
-            rcumode = 6
-        else:
-            raise ValueError('nqzone out of range for non 100MHz NQ')
-    return rcumode
 
 
 def dt2mjd(dt):
     """
     Convert a python datetime to modified julian date
-
-    Parameters
-    ----------
-    dt: datetime
-        Datetime
-
-    Returns
-    -------
-    mjd: float
-        Modified Julian date
     """
     sigdec = 5
     ymd, hms = dt.date(), dt.time()
@@ -780,29 +724,6 @@ def bits_support_nrbeamlets(nrbeamlets):
         if nrbeamlets <= NRBEAMLETSBYBITS[bits]:
             break
     return bits
-
-
-def nrrcus_stnid(stnid):
-    """
-    Number of RCUs from station ID
-
-    Parameters
-    ---------
-    stnid: str
-        Station ID
-
-    Returns
-    -------
-    nrrcus: int
-        Number of RCUs
-    """
-    location_id = stnid[:2]
-    if location_id == 'CS' or location_id == 'RS':
-        nrrcus = 96
-    else:
-        # EU station
-        nrrcus = 192
-    return nrrcus
 
 
 def modelogic(freqspec, pointing, duration_tot, integration, bsx_type, bfs, acc,
