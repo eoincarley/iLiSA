@@ -1300,6 +1300,7 @@ def plotbst(bstff, pol_stokes=True):
     # Plot hi-res beam-formed data
     bfsff = '/home/ilofar/Data/UK902/bfs/UK902_20210408_094403_spw5_sb51:461_dur1020_dir0.,0.,SUN_bfs/'
     obsudpinfo = filefolder2obsfileinfo(bfsff)
+    numpy.save('/home/ilofar/Data/obsudpinfo.npy', obsudpinfo)
     files = glob.glob(bfsff+"Stokes*")
     udpdata = icd6.readUDPstokes(files, obsudpinfo)
     iquv = numpy.array(udpdata[0])

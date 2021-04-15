@@ -44,7 +44,7 @@ def return_root_attributes(obsfileinfo, bctlcmds):
     rootattrs['DOC_NAME'] = 'ICD 6:Dynamic-Spectrum Data'
     rootattrs['DOC_VERSION'] = 'ICD6:v-2.03.10'
     rootattrs['DYN_SPEC_GROUPS'] = "True"
-    rootattrs['FILEDATE'] = Time(filetime, format="datetime")
+    rootattrs['FILEDATE'] = Time(filetime, format="datetime").iso
     rootattrs['OBSERVATION_ID'] = 'LOFAR4SW' #ct.table(ms+"/OBSERVATION").getcol("LOFAR_OBSERVATION_ID")[0]
     rootattrs['FILENAME'] = ' '
     rootattrs['FILETYPE'] = "dynspec"
@@ -270,7 +270,7 @@ def readUDPstokes(files, metadata):
     freqs = metadata['frequencies'] # 
     integ = metadata['integration'] # Input raw time res. Usuall 16x5.12 microseconds.
     time0 = metadata['datetime']
-    tres = 0.001  		    # Desired tres after integration
+    tres = 0.01  		    # Desired tres after integration
     ntimes = int(tres/integ)        # In while loop below, read ever ntimes -> integrate 
     nsteps = duration/tres
     const1 = int(ntimes*244*4)      # Numbytes to read in each block. Each element is a 4 byte float32.
@@ -285,7 +285,7 @@ def readUDPstokes(files, metadata):
        file_obj = open(f, 'rb')
        print('Reading and formatting %s.' %(f))
        bar.start()
-       while 1:
+       while i<10:
           block = file_obj.read(const1)
           if not block: break
           format = '{:d}f'.format(len(block)//4)
@@ -332,19 +332,23 @@ def sb_to_freqs(sb0, sb1, mode, clock_freq=200.0):
 
 def udp2hdf5(data, obsfileinfo, stokes='I', savepath='.'):
 
+    bctlcmds = return_bctlmds(obsfileinfo)
     ldat_type = obsfileinfo['ldat_type']   
     stksstr = ''.join(stokes)
     strtime0 = obsfileinfo['datetime'].strftime("%Y%m%dT%H%M%S") 
     filename = 'l4sw_uk902c_'+strtime0+'_SUN_'+ldat_type+'_'+stksstr+'.h5'
     outfid = h5py.File(savepath+filename, "w")
+
+    rootattrs = return_root_attributes(obsfileinfo, bctlcmds)
+    for ky in rootattrs.keys():
+        outfid.attrs[ky] = rootattrs[ky]
+    
     outfid.create_group("SYS_LOG")
     ds = outfid.create_group("DYNSPEC_000")
-
-    bctlcmds = return_bctlmds(obsfileinfo)
-    rootattrs = return_root_attributes(obsfileinfo, bctlcmds)
     dsattrs = return_dynspec_attributes(rootattrs)
     for ky in dsattrs.keys():
-        ds.attrs[ky] = dsattrs[ky]
+	print(ky)
+	ds.attrs[ky] = dsattrs[ky]
 
     dsdata = ds.create_dataset("DATA", data=data)
     dataattrs = return_data_attributes(data.shape)
