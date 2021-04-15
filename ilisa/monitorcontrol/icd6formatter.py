@@ -55,7 +55,7 @@ def return_root_attributes(obsfileinfo, bctlcmds):
     rootattrs['NOF_TILED_DYNSPEC'] = 0
     rootattrs['NOTES'] = " "
     rootattrs['OBSERVATION_END_MJD'] = endtime.mjd
-    rootattrs['OBSERVATION_END_UTC'] = endtime.iso.replace(" ","T")+"000000Z + 0 s"
+    rootattrs['OBSERVATION_END_UTC'] = endtime.iso.replace(" ","T")+"00000z"
     rootattrs['OBSERVATION_FREQUENCY_MIN'] = np.min(freqs)
     rootattrs['OBSERVATION_FREQUENCY_MAX'] = np.max(freqs)
     rootattrs['OBSERVATION_FREQUENCY_CENTER'] = np.median(freqs)
@@ -63,7 +63,7 @@ def return_root_attributes(obsfileinfo, bctlcmds):
     rootattrs['OBSERVATION_NOF_BITS_PER_SAMPLE'] = bits
     rootattrs['OBSERVATION_NOF_STATIONS'] = len(stationlist)
     rootattrs['OBSERVATION_START_MJD'] = starttime.mjd
-    rootattrs['OBSERVATION_START_UTC'] = starttime.iso.replace(" ","T")+"000000Z + 0 s"
+    rootattrs['OBSERVATION_START_UTC'] = starttime.iso.replace(" ","T")+"00000z"
     rootattrs['OBSERVATION_STATIONS_LIST'] = np.array([stationlist])
     rootattrs['PIPELINE_NAME'] = 'DYNAMIC SPECTRUM'
     rootattrs['PIPELINE_VERSION'] = 'Dynspec v.3.0'
@@ -88,7 +88,7 @@ def return_root_attributes(obsfileinfo, bctlcmds):
     rootattrs['TARGET'] = bctlcmds['digdir']
     rootattrs['TELESCOPE'] = obsfileinfo['station_id']
     rootattrs['TOTAL_BAND_WIDTH'] = freqs[-1] - freqs[0]
-    rootattrs['TOTAL_INTEGRATION_TIME'] = dt
+    rootattrs['TOTAL_INTEGRATION_TIME'] = obsfileinfo['duration_scan']
     rootattrs['TOTAL_INTEGRATION_TIME_UNIT'] = 's'
     rootattrs['WEATHER_HUMIDITY'] = np.zeros(len(stationlist))
     rootattrs['WEATHER_STATIONS_LIST'] = np.array(["none" for i in range(len(stationlist))])
@@ -337,6 +337,7 @@ def udp2hdf5(data, obsfileinfo, stokes='I', savepath='.'):
     stksstr = ''.join(stokes)
     strtime0 = obsfileinfo['datetime'].strftime("%Y%m%dT%H%M%S") 
     filename = 'l4sw_uk902c_'+strtime0+'_SUN_'+ldat_type+'_'+stksstr+'.h5'
+    
     outfid = h5py.File(savepath+filename, "w")
 
     rootattrs = return_root_attributes(obsfileinfo, bctlcmds)
